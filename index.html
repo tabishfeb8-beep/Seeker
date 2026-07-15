@@ -70,4 +70,472 @@
         
         /* Endgame Dedicated Area styling */
         .endgame-area {
-            background: rgba(232, 65, 24, 0.08); border: 2px dashed #e8411
+            background: rgba(232, 65, 24, 0.08); border: 2px dashed #e84118;
+            border-radius: 12px; padding: 15px; margin-top: 30px;
+        }
+
+        /* Grid systems for Card pools */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px; margin-bottom: 10px;
+        }
+
+        /* Question Cards Styling */
+        .q-card {
+            background: #2f3640; border: 3px solid #718093; border-radius: 10px;
+            height: 140px; padding: 10px; display: flex; flex-direction: column;
+            justify-content: space-between; cursor: pointer; user-select: none;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .q-card:hover { transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0,0,0,0.4); }
+        
+        /* Ask State borders */
+        .q-card.asked-once {
+            border-color: #00d2d3;
+            box-shadow: 0 0 10px rgba(0, 210, 211, 0.4);
+        }
+        .q-card.asked-twice {
+            border-color: #fbc531;
+            border-style: double;
+            border-width: 6px;
+            box-shadow: 0 0 15px rgba(251, 197, 49, 0.5);
+        }
+
+        .q-title { font-size: 12px; font-weight: bold; color: white; line-height: 1.3; }
+        .q-meta { font-size: 10px; color: #a4b0be; text-transform: uppercase; font-weight: bold; }
+        
+        .draw-badge {
+            font-size: 9px; padding: 2px 6px; border-radius: 4px;
+            background: #1e272e; color: #fbc531; width: max-content; margin-top: 4px;
+        }
+
+        /* Overlays & Modals */
+        .overlay { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(0,0,0,0.85); display: none; 
+            align-items: center; justify-content: center; z-index: 999; 
+            backdrop-filter: blur(4px);
+        }
+        .big-modal {
+            background: #2f3640; border: 3px solid #718093; border-radius: 16px;
+            padding: 25px; max-width: 480px; width: 92%; text-align: center;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.7); color: white;
+        }
+        .big-modal.endgame-theme { border-color: #e84118; }
+        .modal-title { font-size: 22px; font-weight: bold; color: #fbc531; margin-bottom: 5px; }
+        .modal-meta { font-size: 12px; color: #a4b0be; text-transform: uppercase; margin-bottom: 15px; }
+        .modal-desc {
+            background: #1e272e; border: 1px solid #718093; border-radius: 8px;
+            padding: 15px; font-size: 14px; text-align: left; line-height: 1.5;
+            color: #dcdde1; margin-bottom: 20px; min-height: 80px;
+        }
+
+        /* Action Buttons */
+        .btn-row { display: flex; gap: 10px; justify-content: center; }
+        button {
+            background: #353b48; color: white; border: 2px solid #718093;
+            padding: 12px; font-size: 14px; border-radius: 6px; cursor: pointer;
+            font-weight: bold; transition: 0.2s; width: 100%;
+        }
+        button:hover { background: #57606f; }
+        button.use-btn { background: #00d2d3; border-color: #00d2d3; color: black; }
+        button.use-btn:hover { background: #01a3a4; }
+        button.unask-btn { background: #e84118; border-color: #e84118; color: white; }
+        button.unask-btn:hover { background: #c23616; }
+        button.close-btn { background: #718093; border-color: #718093; }
+        button.reset-btn { background: #e84118; border-color: #e84118; margin-top: 15px; font-size: 12px; padding: 8px; }
+        button.reset-btn:hover { background: #c23616; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="top-navbar">
+        <div class="header-title">
+            <span>JET LAG: SEEKER'S SYSTEM</span>
+        </div>
+        <div class="navbar-session-timer" id="live-session-timer">00:00:00</div>
+    </div>
+
+    <div class="screen">
+        
+        <div class="left-panel">
+            <h1>Session Log</h1>
+            <div class="subtitle">Realtime metrics tracking</div>
+            
+            <div class="stat-box">
+                <div class="stat-title">Total Questions Asked</div>
+                <div class="stat-value" id="stat-total-asked">0</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div class="stat-box" style="margin-bottom:0;">
+                    <div class="stat-title">Draws Given</div>
+                    <div class="stat-value" style="font-size:22px; color:#fbc531;" id="stat-draws-sum">0</div>
+                </div>
+                <div class="stat-box" style="margin-bottom:0;">
+                    <div class="stat-title">Picks Given</div>
+                    <div class="stat-value" style="font-size:22px; color:#fbc531;" id="stat-picks-sum">0</div>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-title">Questions by Category</div>
+                <div class="stats-grid" id="stats-category-breakdown">
+                    </div>
+            </div>
+
+            <div class="stat-title">Action Ledger</div>
+            <div class="logger-box" id="logger-feed">
+                <div style="color: #a4b0be; font-style: italic;">Log entries will output here...</div>
+            </div>
+
+            <button class="reset-btn" onclick="confirmResetGame()">⚠️ Clear Data & Reset Tracker</button>
+        </div>
+
+        <div class="right-panel">
+            <h1>Seekers Questionnaire</h1>
+            <div class="subtitle">Click any question card to inspect full requirements and track usage.</div>
+
+            <div class="section-header">Draw 1 Questions</div>
+            <div class="cards-grid" id="grid-draw1"></div>
+
+            <div class="section-header">Draw 2 Pick 1 Questions</div>
+            <div class="cards-grid" id="grid-draw2"></div>
+
+            <div class="section-header">Draw 3 Pick 1 Questions</div>
+            <div class="cards-grid" id="grid-draw3"></div>
+
+            <div class="section-header">Draw 4 Pick 1 Questions</div>
+            <div class="cards-grid" id="grid-draw4"></div>
+
+            <div class="endgame-area">
+                <div class="section-header" style="margin-top:0; border-color: #e84118; color: #e84118;">🚨 ENDGAME QUESTIONS</div>
+                <div class="cards-grid" id="grid-endgame"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="inspector-overlay" onclick="closeInspector()">
+        <div class="big-modal" id="modal-card-content" onclick="event.stopPropagation()">
+            <div class="modal-title" id="m-title">Question Title</div>
+            <div class="modal-meta" id="m-meta">CATEGORY | DRAW X PICK Y</div>
+            <div class="modal-desc" id="m-desc">Full details description goes here...</div>
+            
+            <div class="btn-row">
+                <button class="use-btn" id="m-btn-use" onclick="askCurrentQuestion()">Ask Question</button>
+                <button class="unask-btn" id="m-btn-unask" onclick="unaskCurrentQuestion()">Unask</button>
+                <button class="close-btn" onclick="closeInspector()">Close</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Master Questions List Definition
+    const questions = [
+        { id: 1, title: "Basketball Net", category: "Photos", draw: 1, pick: 1, isEndgame: false, desc: "Send a picture of a basketball net, any kind, it cannot be a personal one like a net in a driveway." },
+        { id: 2, title: "Soccer Net", category: "Photos", draw: 1, pick: 1, isEndgame: false, desc: "Send a picture of a soccer net, any size, it must have goal posts and a crossbar." },
+        { id: 3, title: "Playground", category: "Photos", draw: 1, pick: 1, isEndgame: false, desc: "Send a picture of a playground, every structure/toy must be included." },
+        { id: 4, title: "You", category: "Photos (You)", draw: 1, pick: 1, isEndgame: true, desc: "Send a picture of you from arms length away." },
+        { id: 5, title: "Picture Facing up", category: "Photos (You)", draw: 1, pick: 1, isEndgame: true, desc: "Send a picture looking straight up, you cannot obstruct the picture with your body." },
+        { id: 6, title: "Tallest Building", category: "Photos (You)", draw: 1, pick: 1, isEndgame: true, desc: "Send a picture of the tallest building you can see and reasonably estimate to be the tallest." },
+        { id: 7, title: "Distance to Bus Stop", category: "Precision", draw: 1, pick: 1, isEndgame: true, desc: "Provide the Walking Distance (in Minutes) from you to the closest bus stop." },
+        { id: 8, title: "Distance to Gas Station", category: "Precision", draw: 1, pick: 1, isEndgame: true, desc: "Provide the Walking Distance (in Minutes) from you to the closest Gas Station." },
+        { id: 9, title: "Distance to Park", category: "Precision", draw: 1, pick: 1, isEndgame: true, desc: "Provide the Walking Distance (in Minutes) from you to the closest Park, a Park counts as any green area on Google Maps, take the distance to the closest edge." },
+        { id: 10, title: "People Passing by", category: "Precision", draw: 1, pick: 1, isEndgame: true, desc: "Start a 2 minute-timer, count the number of people that pass by you, every Car counts as 1 person, every Bus counts as 5, passing by counts by people crossing you on the nearest transportation median, e.g. sidewalk, road, hallway." },
+        { id: 11, title: "Sum of Soccer Nets + Basketball Nets", category: "Oddball", draw: 1, pick: 1, isEndgame: false, desc: "all Outdoor Soccer Nets + Basketball Nets, multi-goal basketball nets also count." },
+        { id: 12, title: "Road from Bus Stop", category: "Photos (Bus Stop)", draw: 1, pick: 1, isEndgame: false, desc: "Must show the entire road visible from the stop, must be taken at waist height or above." },
+        { id: 13, title: "5 Buildings", category: "Photos", draw: 2, pick: 1, isEndgame: false, desc: "Civil structures, must show entirety of the Building, that is visible." },
+        { id: 14, title: "Shop that sells Food", category: "Photos", draw: 2, pick: 1, isEndgame: false, desc: "Must show entirety of the front of the Store, must sell an edible item." },
+        { id: 15, title: "Bus Stop", category: "Photos (Bus Stop)", draw: 2, pick: 1, isEndgame: false, desc: "Must show the ground, MiWay sign, and shelter if there is one." },
+        { id: 16, title: "Tallest Building from Bus Stop", category: "Photos (Bus Stop)", draw: 2, pick: 1, isEndgame: false, desc: "That you can reasonably estimate, photo must include the entirety of the building visible." },
+        { id: 17, title: "15-Second Voice Message", category: "Videos", draw: 2, pick: 1, isEndgame: false, desc: "Take voice message on the bus stop." },
+        { id: 18, title: "Sum of Parks in your Zone", category: "Oddball", draw: 2, pick: 1, isEndgame: false, desc: "If a slight sliver of a Park is in your Zone, it counts, any green area on Google Maps counts." },
+        { id: 19, title: "Odd or Even Departure", category: "Oddball", draw: 2, pick: 1, isEndgame: false, desc: "Is the next Bus from your bus stop leaving at an odd or even time, use the time provided by Google Maps, regardless if the bus is early or late, (e.g. Bus usually comes at 11 but Google Maps is showing late by 1 min to 11:01, use that, answer Odd in this case)." },
+        { id: 20, title: "Speed Limit of our Roads", category: "Oddball", draw: 2, pick: 1, isEndgame: false, desc: "Is the speed limit of the road your bus stop is on, higher, the same, or lower than the one we're on, use school-zone-specific speeds if applicable." },
+        { id: 21, title: "250 Meter", category: "Radar", draw: 3, pick: 1, isEndgame: false, desc: "250 Meter radar inquiry." },
+        { id: 22, title: "500 Meter", category: "Radar", draw: 3, pick: 1, isEndgame: false, desc: "500 Meter radar inquiry." },
+        { id: 23, title: "1 Kilometer", category: "Radar", draw: 3, pick: 1, isEndgame: false, desc: "1 Kilometer radar inquiry." },
+        { id: 24, title: "2 Kilometer", category: "Radar", draw: 3, pick: 1, isEndgame: false, desc: "2 Kilometer radar inquiry." },
+        { id: 25, title: "Same Road as your Bus Stop", category: "Matching", draw: 3, pick: 1, isEndgame: false, desc: "Am I on the same road as your bus stop." },
+        { id: 26, title: "Same School Level", category: "Matching", draw: 3, pick: 1, isEndgame: false, desc: "Is this school (provide photo) the same level (Elementary, Middle, Secondary) as the one closest to your bus stop (Catholic counts both as Elementary and Middle or just Secondary)." },
+        { id: 27, title: "Same Religious Centre", category: "Matching", draw: 3, pick: 1, isEndgame: false, desc: "Is this the same religious centre (provide photo) to your bus stop (must be physically named)." },
+        { id: 28, title: "Closer to or Further from a Subway", category: "Measuring", draw: 3, pick: 1, isEndgame: false, desc: "Are you closer to or further from a Subway than us (provide distance from Subway)." },
+        { id: 29, title: "Closer to or Further from a Tennis Court", category: "Measuring", draw: 3, pick: 1, isEndgame: false, desc: "Are you closer to or further from a tennis court (public or private) than us (provide distance from tennis court)." },
+        { id: 30, title: "Bystander of the Law", category: "Special", draw: 4, pick: 1, isEndgame: false, desc: "Stay on video-call until you show us someone breaking the law." },
+        { id: 31, title: "Custom Distance", category: "Radar", draw: 4, pick: 1, isEndgame: false, desc: "Distance chosen cannot be within 10% of any of the other Radar options." }
+    ];
+
+    // Main Game State Object
+    const gameState = {
+        startTime: null,
+        historyLog: [],
+        questions: questions
+    };
+
+    let activeQuestionId = null;
+
+    // Save Game State to Browser Memory
+    function saveState() {
+        const payload = {
+            startTime: gameState.startTime,
+            historyLog: gameState.historyLog,
+            questionsState: gameState.questions.map(q => ({ id: q.id, askedCount: q.askedCount }))
+        };
+        localStorage.setItem('jetlag_seeker_state', JSON.stringify(payload));
+    }
+
+    // Load Game State from Browser Memory on Startup
+    function loadState() {
+        const raw = localStorage.getItem('jetlag_seeker_state');
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                gameState.startTime = parsed.startTime;
+                
+                // Restore History Logs
+                gameState.historyLog = parsed.historyLog || [];
+                
+                // Restore question ask states
+                if (parsed.questionsState) {
+                    parsed.questionsState.forEach(savedItem => {
+                        const original = gameState.questions.find(q => q.id === savedItem.id);
+                        if (original) {
+                            original.askedCount = savedItem.askedCount;
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to restore previous save state, resetting values.", err);
+            }
+        }
+        
+        // If no timer was saved previously, start one now
+        if (!gameState.startTime) {
+            gameState.startTime = Date.now();
+            saveState();
+        }
+    }
+
+    // Initialize Timer Loop
+    function startTimerLoop() {
+        setInterval(() => {
+            if (!gameState.startTime) return;
+            const diff = Math.floor((Date.now() - gameState.startTime) / 1000);
+            let hrs = Math.floor(diff / 3600);
+            let mins = Math.floor((diff % 3600) / 60);
+            let secs = diff % 60;
+            document.getElementById('live-session-timer').innerText = 
+                `${hrs < 10 ? '0'+hrs : hrs}:${mins < 10 ? '0'+mins : mins}:${secs < 10 ? '0'+secs : secs}`;
+        }, 1000);
+    }
+
+    // App Startup Entry Point
+    function initApp() {
+        loadState();
+        startTimerLoop();
+        renderCardGrids();
+        updateDashboardMetrics();
+        renderLogFeed();
+    }
+
+    function renderCardGrids() {
+        const d1 = document.getElementById('grid-draw1');
+        const d2 = document.getElementById('grid-draw2');
+        const d3 = document.getElementById('grid-draw3');
+        const d4 = document.getElementById('grid-draw4');
+        const eg = document.getElementById('grid-endgame');
+
+        d1.innerHTML = ''; d2.innerHTML = ''; d3.innerHTML = ''; d4.innerHTML = ''; eg.innerHTML = '';
+
+        gameState.questions.forEach(q => {
+            const card = document.createElement('div');
+            card.className = `q-card`;
+            card.id = `q-card-${q.id}`;
+            
+            applyCardVisuals(card, q.askedCount);
+
+            card.innerHTML = `
+                <div>
+                    <div class="q-meta">${q.category}</div>
+                    <div class="q-title" style="margin-top:5px;">${q.title}</div>
+                </div>
+                <div class="draw-badge">Draw ${q.draw} Pick ${q.pick}</div>
+            `;
+            
+            card.onclick = () => openInspector(q.id);
+
+            if (q.isEndgame) {
+                eg.appendChild(card);
+            } else if (q.draw === 1) {
+                d1.appendChild(card);
+            } else if (q.draw === 2) {
+                d2.appendChild(card);
+            } else if (q.draw === 3) {
+                d3.appendChild(card);
+            } else if (q.draw === 4) {
+                d4.appendChild(card);
+            }
+        });
+    }
+
+    function applyCardVisuals(cardEl, count) {
+        cardEl.classList.remove('asked-once', 'asked-twice');
+        if (count === 1) {
+            cardEl.classList.add('asked-once');
+        } else if (count >= 2) {
+            cardEl.classList.add('asked-twice');
+        }
+    }
+
+    // Modal Inspector Controls
+    function openInspector(id) {
+        const q = gameState.questions.find(item => item.id === id);
+        if(!q) return;
+
+        activeQuestionId = id;
+        document.getElementById('m-title').innerText = q.title;
+        document.getElementById('m-meta').innerText = `${q.category} | Draw ${q.draw} Pick ${q.pick} ${q.isEndgame ? '(ENDGAME)' : ''}`;
+        document.getElementById('m-desc').innerText = q.desc;
+
+        const modalBox = document.getElementById('modal-card-content');
+        if(q.isEndgame) {
+            modalBox.classList.add('endgame-theme');
+        } else {
+            modalBox.classList.remove('endgame-theme');
+        }
+
+        document.getElementById('m-btn-unask').style.display = q.askedCount > 0 ? 'block' : 'none';
+        
+        const useBtn = document.getElementById('m-btn-use');
+        if (q.askedCount >= 2) {
+            useBtn.innerText = "Max Asks Reached";
+            useBtn.disabled = true;
+            useBtn.style.opacity = "0.5";
+        } else {
+            useBtn.innerText = q.askedCount === 1 ? "Ask 2nd Time" : "Ask Question";
+            useBtn.disabled = false;
+            useBtn.style.opacity = "1";
+        }
+
+        document.getElementById('inspector-overlay').style.display = 'flex';
+    }
+
+    function closeInspector() {
+        document.getElementById('inspector-overlay').style.display = 'none';
+        activeQuestionId = null;
+    }
+
+    // Ask actions
+    function askCurrentQuestion() {
+        const q = gameState.questions.find(item => item.id === activeQuestionId);
+        if(!q || q.askedCount >= 2) return;
+
+        q.askedCount++;
+        const timeStampStr = document.getElementById('live-session-timer').innerText;
+        
+        logActivity(`[${timeStampStr}] ASKED: "${q.title}" (Draw ${q.draw} Pick ${q.pick})`);
+        
+        const cardEl = document.getElementById(`q-card-${q.id}`);
+        applyCardVisuals(cardEl, q.askedCount);
+        
+        updateDashboardMetrics();
+        saveState();
+        closeInspector();
+    }
+
+    function unaskCurrentQuestion() {
+        const q = gameState.questions.find(item => item.id === activeQuestionId);
+        if(!q || q.askedCount <= 0) return;
+
+        q.askedCount--;
+        const timeStampStr = document.getElementById('live-session-timer').innerText;
+        
+        logActivity(`[${timeStampStr}] UNASKED: "${q.title}" (Rollback applied)`);
+        
+        const cardEl = document.getElementById(`q-card-${q.id}`);
+        applyCardVisuals(cardEl, q.askedCount);
+        
+        updateDashboardMetrics();
+        saveState();
+        closeInspector();
+    }
+
+    // Ledger Logging System
+    function logActivity(message) {
+        gameState.historyLog.unshift(message);
+        renderLogFeed();
+    }
+
+    function renderLogFeed() {
+        const feed = document.getElementById('logger-feed');
+        if (gameState.historyLog.length === 0) {
+            feed.innerHTML = `<div style="color: #a4b0be; font-style: italic;">Log entries will output here...</div>`;
+        } else {
+            feed.innerHTML = gameState.historyLog.map(entry => `<div class="log-entry">${entry}</div>`).join('');
+        }
+    }
+
+    // Live Metrics Calculations
+    function updateDashboardMetrics() {
+        let totalAsked = 0;
+        let totalDraws = 0;
+        let totalPicks = 0;
+
+        const categoryCounts = {};
+        
+        gameState.questions.forEach(q => {
+            if(!categoryCounts[q.category]) categoryCounts[q.category] = 0;
+            
+            if (q.askedCount > 0) {
+                totalAsked += q.askedCount;
+                totalDraws += (q.draw * q.askedCount);
+                totalPicks += (q.pick * q.askedCount);
+                categoryCounts[q.category] += q.askedCount;
+            }
+        });
+
+        document.getElementById('stat-total-asked').innerText = totalAsked;
+        document.getElementById('stat-draws-sum').innerText = totalDraws;
+        document.getElementById('stat-picks-sum').innerText = totalPicks;
+
+        const breakdownContainer = document.getElementById('stats-category-breakdown');
+        breakdownContainer.innerHTML = '';
+        
+        const uniqueCategories = [...new Set(gameState.questions.map(q => q.category))];
+        uniqueCategories.forEach(cat => {
+            const count = categoryCounts[cat] || 0;
+            const row = document.createElement('div');
+            row.className = 'stat-row';
+            row.innerHTML = `
+                <span class="stat-label">${cat}</span>
+                <span class="stat-num">${count}</span>
+            `;
+            breakdownContainer.appendChild(row);
+        });
+    }
+
+    // Manual Game Reset Logic
+    function confirmResetGame() {
+        if (confirm("Are you sure you want to completely clear the current session and restart the timer?")) {
+            localStorage.removeItem('jetlag_seeker_state');
+            
+            // Clean local variables
+            gameState.startTime = Date.now();
+            gameState.historyLog = [];
+            gameState.questions.forEach(q => { q.askedCount = 0; });
+            
+            saveState();
+            renderCardGrids();
+            updateDashboardMetrics();
+            renderLogFeed();
+        }
+    }
+
+    // Start App
+    initApp();
+</script>
+</body>
+</html>
